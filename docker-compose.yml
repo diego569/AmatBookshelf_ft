@@ -1,0 +1,24 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://172.16.10.7:3001}
+        NEXT_PUBLIC_DEV_LOGIN: ${NEXT_PUBLIC_DEV_LOGIN:-1}
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://172.16.10.7:3001}
+      - NEXT_PUBLIC_DEV_LOGIN=${NEXT_PUBLIC_DEV_LOGIN:-1}
+    restart: always
+
+# Note: The backend must be accessible from the user's device (phone) via the IP address.
+# Ensure the backend port 3001 is open on your firewall if needed.
+# ufw allow 3001
+# ufw allow 3000
+#
+# IMPORTANT: Mobile browsers require HTTPS for camera access (except on localhost).
+# To test on mobile via LAN IP (HTTP), you may need to:
+# 1. Use Chrome on Android and enable 'Insecure origins treated as secure' in chrome://flags
+# 2. Or use a tunneling service like ngrok to get an HTTPS URL: `ngrok http 3000`
