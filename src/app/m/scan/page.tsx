@@ -34,8 +34,8 @@ export default function ScanPage() {
 
             router.push(`/m/result?${params.toString()}`);
         } catch (error: any) {
-            toast.error(error.message || "Failed to scan QR code");
-            router.push("/m/result?ok=false&status=ERROR&message=Invalid token or connection error");
+            toast.error(error.message || "No se pudo escanear el código QR");
+            router.push("/m/result?ok=false&status=ERROR&message=Token inválido o error de conexión");
         } finally {
             setIsProcessing(false);
         }

@@ -14,18 +14,18 @@ export default function ScanResultPage() {
     const ok = searchParams.get("ok") === "true";
     const status = searchParams.get("status");
     const points = searchParams.get("points") || "0";
-    const message = searchParams.get("message") || "Something went wrong";
+    const message = searchParams.get("message") || "Algo salió mal";
 
     const isLate = status === "LATE";
     const isErr = !ok || status === "ERROR";
 
     const config = isErr
         ? {
-            badge: "SCAN FAILED",
+            badge: "ESCANEO FALLIDO",
             icon: <X size={44} />,
             iconBg: "bg-red/10",
             iconColor: "text-red",
-            title: "Invalid QR",
+            title: "QR inválido",
             subtitle: message,
             points: "0",
             pointsColor: "text-red",
@@ -33,23 +33,23 @@ export default function ScanResultPage() {
         }
         : isLate
             ? {
-                badge: "LATE ARRIVAL",
+                badge: "LLEGADA TARDE",
                 icon: <Clock size={44} />,
                 iconBg: "bg-ochre/10",
                 iconColor: "text-ochre",
-                title: "Checked In",
-                subtitle: "Better late than never!",
+                title: "Registro hecho",
+                subtitle: "Más vale tarde que nunca.",
                 points: `+${points}`,
                 pointsColor: "text-ochre",
                 showConfetti: false,
             }
             : {
-                badge: "ON TIME",
+                badge: "A TIEMPO",
                 icon: <Check size={44} />,
                 iconBg: "bg-sage/10",
                 iconColor: "text-sage",
-                title: "Attendance Confirmed!",
-                subtitle: "You are on time.",
+                title: "Asistencia confirmada",
+                subtitle: "Llegaste a tiempo.",
                 points: `+${points}`,
                 pointsColor: "text-sage",
                 showConfetti: true,
@@ -80,8 +80,8 @@ export default function ScanResultPage() {
 
                     <div className="w-full bg-cream rounded-2xl p-4 border border-beige mb-7">
                         <span className="text-gray-400 text-xs uppercase font-bold tracking-wider">
-                            Points Earned
-                        </span>
+                        Puntos obtenidos
+                    </span>
                         <div
                             className={cn(
                                 "font-serif text-5xl font-bold mt-1",
@@ -93,7 +93,7 @@ export default function ScanResultPage() {
                     </div>
 
                     <Button onClick={() => router.push("/m")} className="w-full h-14">
-                        Done
+                        Listo
                     </Button>
                 </Card>
             </div>

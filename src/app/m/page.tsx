@@ -5,16 +5,17 @@ import { useAuthStore } from "@/lib/store/auth";
 import { appContextApi } from "@/lib/api/appContextApi";
 import { sessionsApi } from "@/lib/api/sessionsApi";
 import { pointsApi } from "@/lib/api/pointsApi";
+import { clubsApi } from "@/lib/api/clubsApi";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { History, Scan, BookOpen } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 export default function MemberDashboard() {
     const router = useRouter();
-    const { currentPerson, membershipId, logout } = useAuthStore();
+    const { currentPerson, membershipId, accessToken, setMembershipId } = useAuthStore();
 
     // Redirect to login if no person data
     useEffect(() => {
@@ -28,6 +29,51 @@ export default function MemberDashboard() {
         queryKey: ["appContext"],
         queryFn: appContextApi.getContext,
     });
+
+    const tokenPersonId = useMemo(() => {
+        if (!accessToken) return null;
+        try {
+            const base64Url = accessToken.split(".")[1];
+            if (!base64Url) return null;
+            const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+            const json = decodeURIComponent(
+                atob(base64)
+                    .split("")
+                    .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+                    .join("")
+            );
+            const payload = JSON.parse(json) as { sub?: string };
+            return payload.sub ?? null;
+        } catch {
+            return null;
+        }
+    }, [accessToken]);
+
+    const { data: memberships } = useQuery({
+        queryKey: ["memberships", context?.defaultClubId],
+        queryFn: () => clubsApi.getMemberships(context!.defaultClubId),
+        enabled: !!context?.defaultClubId,
+    });
+
+    const displayName = useMemo(() => {
+        if (memberships && tokenPersonId) {
+            const match = memberships.find((m) => m.personId === tokenPersonId);
+            if (match?.person?.fullName) return match.person.fullName;
+        }
+        return currentPerson?.name || "Member";
+    }, [memberships, tokenPersonId, currentPerson?.name]);
+
+    const resolvedMembershipId = useMemo(() => {
+        if (membershipId) return membershipId;
+        if (!memberships || !tokenPersonId) return null;
+        return memberships.find((m) => m.personId === tokenPersonId)?.id ?? null;
+    }, [membershipId, memberships, tokenPersonId]);
+
+    useEffect(() => {
+        if (!membershipId && resolvedMembershipId) {
+            setMembershipId(resolvedMembershipId);
+        }
+    }, [membershipId, resolvedMembershipId, setMembershipId]);
 
     // Fetch Next Session
     const { data: sessions } = useQuery({
@@ -57,9 +103,9 @@ export default function MemberDashboard() {
         <div className="min-h-screen flex flex-col pb-24 animate-fade-in bg-cream">
             <header className="px-6 sm:px-8 pt-10 pb-6 flex items-end justify-between">
                 <div>
-                    <p className="text-gray-500 text-sm font-medium mb-1">Welcome back,</p>
+                    <p className="text-gray-500 text-sm font-medium mb-1">Bienvenida,</p>
                     <h2 className="font-serif text-3xl text-forest">
-                        {currentPerson?.name || "Member"}
+                        {displayName}
                     </h2>
                 </div>
 
@@ -80,7 +126,7 @@ export default function MemberDashboard() {
                     <Card className="p-7 sm:p-8 relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-36 h-36 bg-beige/40 rounded-full -mr-12 -mt-12 blur-2xl"></div>
                         <div className="relative z-10">
-                            <Badge className="mb-4">Next Session</Badge>
+                            <Badge className="mb-4">Próxima sesión</Badge>
                             <h1 className="font-serif text-3xl sm:text-4xl text-forest leading-tight">
                                 {nextSession.title}
                             </h1>
@@ -102,25 +148,25 @@ export default function MemberDashboard() {
                                     <BookOpen size={14} className="text-forest/40" />
                                 </div>
                                 <span className="text-xs text-gray-400 font-medium">
-                                    {nextSession.sessionType.toLowerCase()} session
+                                    {nextSession.sessionType.toLowerCase()} sesión
                                 </span>
                             </div>
                         </div>
                     </Card>
                 ) : (
                     <Card className="p-7 text-center">
-                        <p className="text-gray-400 italic">No upcoming sessions found.</p>
+                        <p className="text-gray-400 italic">No hay sesiones próximas.</p>
                     </Card>
                 )}
 
-                {!membershipId && (
+                {!resolvedMembershipId && (
                     <p className="text-center text-ochre text-xs mt-6 font-medium animate-pulse">
-                        Scan your first session to join the club!
+                        Escanea tu primera sesión para unirte al club.
                     </p>
                 )}
 
                 <p className="text-center text-gray-400 text-sm mt-8 px-6 leading-relaxed">
-                    “Books are a uniquely portable magic.”<br />
+                    “Los libros son una magia única y portátil.”<br />
                     <span className="italic opacity-60">— Stephen King</span>
                 </p>
             </main>
@@ -130,7 +176,7 @@ export default function MemberDashboard() {
                 <div className="w-full max-w-md">
                     <Button onClick={handleScan} size="lg" className="w-full h-16 shadow-float">
                         <Scan className="text-beige" />
-                        <span className="tracking-wide">Scan Attendance QR</span>
+                        <span className="tracking-wide">Escanear QR de asistencia</span>
                     </Button>
                 </div>
             </div>

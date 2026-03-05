@@ -24,11 +24,11 @@ export default function LoginPage() {
     const handleDevLogin = (e: React.FormEvent) => {
         e.preventDefault();
         if (!devAccessToken || !devRefreshToken) {
-            toast.error("Please provide both tokens");
+            toast.error("Por favor ingresa ambos tokens");
             return;
         }
         setTokens(devAccessToken, devRefreshToken);
-        toast.success("Logged in with dev tokens");
+        toast.success("Sesión iniciada con tokens de desarrollo");
         router.push("/m");
     };
 
@@ -43,7 +43,7 @@ export default function LoginPage() {
                     <div className="mx-auto w-16 h-16 bg-forest rounded-2xl flex items-center justify-center shadow-soft transform rotate-3">
                         <Book className="text-cream" size={30} />
                     </div>
-                    <h1 className="font-serif text-5xl text-forest tracking-tight">Gather.</h1>
+                    <h1 className="font-serif text-5xl text-forest tracking-tight">Reúnete.</h1>
                 </div>
 
                 <div className="relative">
@@ -54,8 +54,8 @@ export default function LoginPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <p className="font-serif text-2xl italic text-charcoal">"Read. Reflect. Belong."</p>
-                    <p className="font-sans text-xs text-gray-500 uppercase tracking-[0.22em]">Member access</p>
+                    <p className="font-serif text-2xl italic text-charcoal">"Lee. Reflexiona. Pertenece."</p>
+                    <p className="font-sans text-xs text-gray-500 uppercase tracking-[0.22em]">Acceso de miembros</p>
                 </div>
             </div>
 
@@ -71,7 +71,7 @@ export default function LoginPage() {
                         <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                         <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                     </svg>
-                    <span>Sign in with Google</span>
+                    <span>Ingresar con Google</span>
                 </Button>
 
                 {process.env.NEXT_PUBLIC_DEV_LOGIN === "1" && (
@@ -81,13 +81,13 @@ export default function LoginPage() {
                             className="w-full flex items-center justify-center gap-2 text-xs text-gray-400 hover:text-gray-600 transition-colors uppercase tracking-widest"
                         >
                             {showDevLogin ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                            Dev Login
+                            Acceso Dev
                         </button>
 
                         {showDevLogin && (
                             <Card className="p-6 space-y-4 animate-slide-up h-auto bg-white/50 backdrop-blur-sm">
                                 <div className="space-y-2 text-left">
-                                    <label className="text-[10px] uppercase font-bold text-gray-400 ml-1 tracking-wider">Access Token</label>
+                                    <label className="text-[10px] uppercase font-bold text-gray-400 ml-1 tracking-wider">Token de acceso</label>
                                     <Input
                                         placeholder="eyJhbG..."
                                         value={devAccessToken}
@@ -96,7 +96,7 @@ export default function LoginPage() {
                                     />
                                 </div>
                                 <div className="space-y-2 text-left">
-                                    <label className="text-[10px] uppercase font-bold text-gray-400 ml-1 tracking-wider">Refresh Token</label>
+                                    <label className="text-[10px] uppercase font-bold text-gray-400 ml-1 tracking-wider">Token de actualización</label>
                                     <Input
                                         placeholder="eyJhbG..."
                                         value={devRefreshToken}
@@ -105,7 +105,7 @@ export default function LoginPage() {
                                     />
                                 </div>
                                 <Button onClick={handleDevLogin} className="w-full h-12 text-sm">
-                                    Login as Dev
+                                    Ingresar como Dev
                                 </Button>
                             </Card>
                         )}
@@ -113,7 +113,7 @@ export default function LoginPage() {
                 )}
 
                 <p className="text-center text-[11px] text-gray-400 font-medium tracking-[0.2em] pt-4">
-                    SMARTPHONE FIRST • RESPONSIVE
+                    PRIMERO EN CELULAR • RESPONSIVO
                 </p>
             </div>
         </div>

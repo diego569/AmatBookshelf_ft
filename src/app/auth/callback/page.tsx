@@ -34,7 +34,7 @@ function CallbackContent() {
     return (
         <div className="flex flex-col items-center gap-4">
             <LoadingSpinner />
-            <p className="text-forest font-medium animate-pulse">Authenticating...</p>
+            <p className="text-forest font-medium animate-pulse">Autenticando...</p>
         </div>
     );
 }

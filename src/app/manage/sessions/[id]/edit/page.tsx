@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { sessionsApi, SessionType, CreateSessionDto } from "@/lib/api/sessionsApi";
@@ -31,32 +31,39 @@ export default function SessionFormPage() {
 
     const [formData, setFormData] = useState<Partial<CreateSessionDto>>({
         title: "",
-        type: "LECTURA",
-        startTime: "",
+        sessionType: "LECTURA",
+        startsAt: "",
         description: "",
     });
 
+    // Helper to format date for datetime-local input (YYYY-MM-DDThh:mm)
+    const toLocalISO = (dateStr: string) => {
+        const date = new Date(dateStr);
+        const pad = (n: number) => n < 10 ? "0" + n : n;
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    };
+
     // Effect to populate form if editing
-    useState(() => {
+    useEffect(() => {
         if (existingSession) {
             setFormData({
                 title: existingSession.title,
-                type: existingSession.type,
-                startTime: existingSession.startTime.split("T")[0] + "T" + existingSession.startTime.split("T")[1].substring(0, 5),
+                sessionType: existingSession.sessionType,
+                startsAt: existingSession.startsAt ? toLocalISO(existingSession.startsAt) : "",
                 description: existingSession.description,
             });
         }
-    });
+    }, [existingSession]);
 
     const createMutation = useMutation({
         mutationFn: (data: CreateSessionDto) =>
             sessionsApi.createSession(context!.defaultClubId, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["sessions"] });
-            toast.success("Session created successfully");
+            toast.success("Sesión creada correctamente");
             router.push("/manage");
         },
-        onError: (error: any) => toast.error(error.message || "Failed to create session"),
+        onError: (error: any) => toast.error(error.message || "No se pudo crear la sesión"),
     });
 
     const updateMutation = useMutation({
@@ -65,22 +72,22 @@ export default function SessionFormPage() {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ["sessions"] });
             queryClient.invalidateQueries({ queryKey: ["session", params.id] });
-            toast.success("Session updated successfully");
+            toast.success("Sesión actualizada correctamente");
             router.push("/manage");
         },
-        onError: (error: any) => toast.error(error.message || "Failed to update session"),
+        onError: (error: any) => toast.error(error.message || "No se pudo actualizar la sesión"),
     });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.title || !formData.startTime) {
-            toast.error("Please fill in title and start time");
+        if (!formData.title || !formData.startsAt) {
+            toast.error("Completa el título y la hora de inicio");
             return;
         }
 
         const data = {
             ...formData,
-            startTime: new Date(formData.startTime!).toISOString(),
+            startsAt: new Date(formData.startsAt!).toISOString(),
             cycleId: context?.defaultCycleId,
         } as CreateSessionDto;
 
@@ -92,7 +99,7 @@ export default function SessionFormPage() {
     };
 
     if (isEdit && isLoadingSession) {
-        return <div className="min-h-screen flex items-center justify-center bg-cream italic text-gray-400">Loading session...</div>;
+        return <div className="min-h-screen flex items-center justify-center bg-cream italic text-gray-400">Cargando sesión...</div>;
     }
 
     return (
@@ -105,44 +112,44 @@ export default function SessionFormPage() {
 
             <Card className="w-full max-w-md p-8 bg-white shadow-float relative z-10">
                 <header className="mb-8">
-                    <Badge className="mb-2">{isEdit ? "Update Details" : "New Session"}</Badge>
+                    <Badge className="mb-2">{isEdit ? "Actualizar detalles" : "Nueva sesión"}</Badge>
                     <h1 className="font-serif text-3xl text-forest">
-                        {isEdit ? "Edit Session" : "Create Session"}
+                        {isEdit ? "Editar sesión" : "Crear sesión"}
                     </h1>
                 </header>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-charcoal ml-1">Session Type</label>
+                        <label className="text-sm font-medium text-charcoal ml-1">Tipo de sesión</label>
                         <select
-                            value={formData.type}
-                            onChange={(e) => setFormData({ ...formData, type: e.target.value as SessionType })}
+                            value={formData.sessionType}
+                            onChange={(e) => setFormData({ ...formData, sessionType: e.target.value as SessionType })}
                             className="w-full appearance-none bg-beige/30 border border-transparent rounded-2xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-forest transition outline-none"
                         >
-                            <option value="LECTURA">Reading Session</option>
-                            <option value="COORDINACION">Coordination / Admin</option>
-                            <option value="EXTRAORDINARIA">Extraordinary Event</option>
+                            <option value="LECTURA">Sesión de lectura</option>
+                            <option value="COORDINACION">Coordinación / Admin</option>
+                            <option value="EXTRAORDINARIA">Evento extraordinario</option>
                         </select>
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-charcoal ml-1">Book Title / Topic</label>
+                        <label className="text-sm font-medium text-charcoal ml-1">Libro o tema</label>
                         <Input
                             value={formData.title}
                             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                            placeholder="e.g. The Great Gatsby"
+                            placeholder="p. ej. El Gran Gatsby"
                             className="font-serif text-lg bg-beige/30"
                         />
                     </div>
 
                     <div className="grid grid-cols-1 gap-4">
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-charcoal ml-1">Start Date & Time</label>
+                            <label className="text-sm font-medium text-charcoal ml-1">Fecha y hora de inicio</label>
                             <div className="relative">
                                 <Input
                                     type="datetime-local"
-                                    value={formData.startTime}
-                                    onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                                    value={formData.startsAt}
+                                    onChange={(e) => setFormData({ ...formData, startsAt: e.target.value })}
                                     className="pl-12 bg-beige/30"
                                 />
                                 <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
@@ -151,12 +158,12 @@ export default function SessionFormPage() {
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-charcoal ml-1">Notes (Optional)</label>
+                        <label className="text-sm font-medium text-charcoal ml-1">Notas (opcional)</label>
                         <textarea
                             rows={3}
                             value={formData.description}
                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            placeholder="Chapter details, location notes..."
+                            placeholder="Detalles del capítulo, ubicación..."
                             className="w-full bg-beige/30 border border-transparent rounded-2xl px-4 py-3 text-sm focus:bg-white focus:border-forest transition resize-none outline-none"
                         />
                     </div>
@@ -168,14 +175,14 @@ export default function SessionFormPage() {
                             onClick={() => router.back()}
                             className="flex-1"
                         >
-                            Cancel
+                            Cancelar
                         </Button>
                         <Button
                             type="submit"
                             className="flex-[2] h-14"
                             disabled={createMutation.isPending || updateMutation.isPending}
                         >
-                            {isEdit ? "Save Changes" : "Create Session"}
+                            {isEdit ? "Guardar cambios" : "Crear sesión"}
                         </Button>
                     </div>
                 </form>

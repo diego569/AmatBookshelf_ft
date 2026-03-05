@@ -1,6 +1,6 @@
 import { api } from "./client";
 
-export type AttendanceStatus = "ON_TIME" | "LATE" | "ABSENT";
+export type AttendanceStatus = "PRESENT" | "ABSENT" | "EXCUSED";
 
 export interface ScanResponseDto {
     ok: boolean;
@@ -24,6 +24,12 @@ export interface AttendanceRecord {
     pointsAwarded?: number;
 }
 
+export interface AttendanceMark {
+    membershipId: string;
+    status: AttendanceStatus;
+    minutesLate?: number;
+}
+
 export const attendanceApi = {
     scanQr: (qrToken: string) =>
         api.post<ScanResponseDto>("/attendance/scan", { qrToken }),
@@ -37,6 +43,6 @@ export const attendanceApi = {
     getMembershipAttendance: (membershipId: string) =>
         api.get<AttendanceRecord[]>(`/memberships/${membershipId}/attendance`),
 
-    bulkMark: (sessionId: string, marks: { membershipId: string; status: AttendanceStatus }[]) =>
+    bulkMark: (sessionId: string, marks: AttendanceMark[]) =>
         api.post(`/sessions/${sessionId}/attendance`, { marks }),
 };

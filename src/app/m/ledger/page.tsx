@@ -4,19 +4,54 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuthStore } from "@/lib/store/auth";
 import { appContextApi } from "@/lib/api/appContextApi";
 import { pointsApi } from "@/lib/api/pointsApi";
+import { clubsApi } from "@/lib/api/clubsApi";
 import { Card } from "@/components/ui/card";
 import { ChevronLeft, History } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useMemo } from "react";
 
 export default function LedgerPage() {
     const router = useRouter();
-    const { currentPerson, membershipId } = useAuthStore();
+    const { currentPerson, membershipId, accessToken } = useAuthStore();
 
     const { data: context } = useQuery({
         queryKey: ["appContext"],
         queryFn: appContextApi.getContext,
     });
+
+    const tokenPersonId = useMemo(() => {
+        if (!accessToken) return null;
+        try {
+            const base64Url = accessToken.split(".")[1];
+            if (!base64Url) return null;
+            const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+            const json = decodeURIComponent(
+                atob(base64)
+                    .split("")
+                    .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+                    .join("")
+            );
+            const payload = JSON.parse(json) as { sub?: string };
+            return payload.sub ?? null;
+        } catch {
+            return null;
+        }
+    }, [accessToken]);
+
+    const { data: memberships } = useQuery({
+        queryKey: ["memberships", context?.defaultClubId],
+        queryFn: () => clubsApi.getMemberships(context!.defaultClubId),
+        enabled: !!context?.defaultClubId,
+    });
+
+    const displayName = useMemo(() => {
+        if (memberships && tokenPersonId) {
+            const match = memberships.find((m) => m.personId === tokenPersonId);
+            if (match?.person?.fullName) return match.person.fullName;
+        }
+        return currentPerson?.name || "Member";
+    }, [memberships, tokenPersonId, currentPerson?.name]);
 
     const { data: points, isLoading } = useQuery({
         queryKey: ["points", membershipId, context?.defaultClubId],
@@ -37,9 +72,9 @@ export default function LedgerPage() {
                     <ChevronLeft size={20} className="text-forest" />
                 </button>
                 <div className="flex-1">
-                    <p className="text-gray-500 text-sm font-medium">My Points</p>
+                    <p className="text-gray-500 text-sm font-medium">Mis puntos</p>
                     <h2 className="font-serif text-2xl text-forest">
-                        {currentPerson?.name || "Member"}
+                        {displayName}
                     </h2>
                 </div>
                 <div className="px-4 py-2 rounded-full bg-white border border-beige shadow-sm">
@@ -54,9 +89,9 @@ export default function LedgerPage() {
                     <div className="flex items-center justify-between">
                         <div>
                             <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                                Ledger
+                                Registro
                             </p>
-                            <h3 className="font-serif text-xl text-forest mt-1">History</h3>
+                            <h3 className="font-serif text-xl text-forest mt-1">Historial</h3>
                         </div>
                         <div className="w-10 h-10 rounded-full bg-forest/5 flex items-center justify-center text-forest">
                             <History size={18} />
@@ -65,7 +100,7 @@ export default function LedgerPage() {
 
                     <div className="mt-4 space-y-3">
                         {isLoading ? (
-                            <p className="text-center py-10 text-gray-400 italic">Loading history...</p>
+                            <p className="text-center py-10 text-gray-400 italic">Cargando historial...</p>
                         ) : transactions.length > 0 ? (
                             transactions.map((it) => (
                                 <div
@@ -96,13 +131,13 @@ export default function LedgerPage() {
                                 </div>
                             ))
                         ) : (
-                            <p className="text-center py-10 text-gray-400 italic">No transactions yet.</p>
+                            <p className="text-center py-10 text-gray-400 italic">Aún no hay movimientos.</p>
                         )}
                     </div>
 
                     <div className="h-px bg-gray-200/70 w-full my-6" />
                     <div className="pt-2 text-xs text-gray-400 leading-relaxed italic">
-                        Tip: If your camera isn’t working, ask the manager to use Manual Attendance.
+                        Consejo: si tu cámara no funciona, pide al coordinador usar Asistencia Manual.
                     </div>
                 </Card>
             </main>

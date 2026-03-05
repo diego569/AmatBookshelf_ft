@@ -14,6 +14,7 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
     const videoRef = useRef<HTMLVideoElement>(null);
     const [hasPermission, setHasPermission] = useState<boolean | null>(null);
     const [flashlight, setFlashlight] = useState(false);
+    const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
     const onScanRef = useRef(onScan);
 
@@ -26,7 +27,22 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
 
         const startScanner = async () => {
             try {
+                if (!navigator.mediaDevices?.getUserMedia) {
+                    setErrorMessage("El acceso a la cámara no está disponible en este navegador.");
+                    setHasPermission(false);
+                    return;
+                }
+
+                // Request permission first to ensure device list is available
+                await navigator.mediaDevices.getUserMedia({ video: true });
+
                 const videoInputDevices = await codeReader.listVideoInputDevices();
+                if (!videoInputDevices.length) {
+                    setErrorMessage("No se detectaron cámaras. Conecta una cámara o habilita el acceso.");
+                    setHasPermission(false);
+                    return;
+                }
+
                 // Select back camera if available, otherwise first one
                 const selectedDeviceId = videoInputDevices.find(device => device.label.toLowerCase().includes('back'))?.deviceId || videoInputDevices[0].deviceId;
 
@@ -41,8 +57,10 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
                     }
                 );
                 setHasPermission(true);
+                setErrorMessage(null);
             } catch (err) {
                 console.error("Scanner init error:", err);
+                setErrorMessage("Permiso de cámara denegado o no disponible. Habilita el acceso y vuelve a intentar.");
                 setHasPermission(false);
             }
         };
@@ -65,7 +83,7 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
                 >
                     <X size={22} />
                 </button>
-                <span className="font-medium tracking-wide text-sm opacity-90">Scan Code</span>
+                <span className="font-medium tracking-wide text-sm opacity-90">Escanear código</span>
                 <button
                     onClick={() => setFlashlight(!flashlight)}
                     className={`p-2 rounded-full backdrop-blur-md transition-colors ${flashlight ? "bg-yellow-400 text-black" : "bg-white/10 text-white"
@@ -80,7 +98,7 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
             <div className="flex-1 relative flex items-center justify-center overflow-hidden">
                 {hasPermission === false && (
                     <div className="absolute inset-0 flex items-center justify-center p-8 text-center text-white z-20">
-                        <p>Camera permission denied or not available. Please allow camera access to scan.</p>
+                        <p>{errorMessage || "Permiso de cámara denegado o no disponible. Habilita el acceso para escanear."}</p>
                     </div>
                 )}
 
@@ -107,13 +125,13 @@ export function QrScanner({ onScan, onClose }: QrScannerProps) {
                 </div>
 
                 <p className="absolute bottom-20 text-white/70 text-sm font-medium tracking-wide animate-pulse z-20">
-                    Align code within frame
+                    Alinea el código dentro del marco
                 </p>
             </div>
 
             <div className="px-6 sm:px-8 pb-10 pt-6 bg-black">
                 <Button variant="black" onClick={onClose} className="w-full h-14 rounded-xl font-bold">
-                    Cancel
+                    Cancelar
                 </Button>
             </div>
         </div>

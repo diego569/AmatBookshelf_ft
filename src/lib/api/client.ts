@@ -10,11 +10,27 @@ export class ApiError extends Error {
 }
 
 async function handleResponse<T>(response: Response): Promise<T> {
-    const data = await response.json().catch(() => ({}));
+    const raw = await response.text();
+    let data: any = null;
+
+    if (raw) {
+        data = (() => {
+            try {
+                return JSON.parse(raw);
+            } catch {
+                return raw;
+            }
+        })();
+    }
+
     if (!response.ok) {
-        const message = data.message || response.statusText || "An error occurred";
+        const message =
+            (typeof data === "object" && data?.message) ||
+            response.statusText ||
+            "An error occurred";
         throw new ApiError(response.status, message, data);
     }
+
     return data as T;
 }
 

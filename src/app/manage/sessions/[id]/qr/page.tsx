@@ -48,7 +48,7 @@ export default function QrCodePage() {
                     <X size={24} className="text-forest" />
                 </button>
                 <span className="font-medium text-xs text-gray-500 tracking-[0.2em] font-sans uppercase">
-                    Session Secure Key
+                    Clave segura de sesión
                 </span>
                 <div className="w-12"></div>
             </div>
@@ -83,7 +83,7 @@ export default function QrCodePage() {
                 {/* Timer UI */}
                 <div className="mt-12 w-full max-w-xs px-4">
                     <div className="flex justify-between text-[10px] font-bold uppercase tracking-[0.15em] text-gray-400 mb-3">
-                        <span>Refreshing Code</span>
+                        <span>Actualizando código</span>
                         <span className="text-forest font-serif italic text-sm">{timeLeft}s</span>
                     </div>
                     <div className="h-2 rounded-full bg-beige/50 overflow-hidden border border-forest/5 relative">
@@ -93,7 +93,7 @@ export default function QrCodePage() {
                         ></div>
                     </div>
                     <p className="text-center text-gray-400 text-[10px] sm:text-xs mt-6 leading-relaxed font-medium">
-                        This code rotates every 30 seconds to prevent unauthorized captures.
+                        Este código rota cada 30 segundos para evitar capturas no autorizadas.
                     </p>
                 </div>
             </div>
@@ -104,7 +104,7 @@ export default function QrCodePage() {
                     className="w-full max-w-sm h-16 shadow-soft"
                     onClick={() => router.back()}
                 >
-                    Back to Lobby
+                    Volver a la sala
                 </Button>
             </div>
 

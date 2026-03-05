@@ -1,18 +1,19 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { sessionsApi } from "@/lib/api/sessionsApi";
 import { attendanceApi } from "@/lib/api/attendanceApi";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { QrCode, ListCheck, Users, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export default function SessionLobbyPage() {
     const params = useParams();
     const router = useRouter();
+    const queryClient = useQueryClient();
     const sessionId = params.id as string;
 
     const { data: session } = useQuery({
@@ -27,20 +28,51 @@ export default function SessionLobbyPage() {
     });
 
     const stats = {
-        present: attendance?.filter((a) => a.status === "ON_TIME").length || 0,
-        late: attendance?.filter((a) => a.status === "LATE").length || 0,
+        present: attendance?.filter((a) => a.status === "PRESENT" && (!a.minutesLate || a.minutesLate === 0)).length || 0,
+        late: attendance?.filter((a) => a.status === "PRESENT" && (a.minutesLate || 0) > 0).length || 0,
         total: attendance?.length || 0,
     };
 
-    if (!session) return <div className="p-8 text-center text-gray-500 italic">Loading session...</div>;
+    const endSessionMutation = useMutation({
+        mutationFn: () => sessionsApi.endSession(sessionId),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["session", sessionId] });
+            queryClient.invalidateQueries({ queryKey: ["sessions"] });
+            queryClient.invalidateQueries({ queryKey: ["liveSession"] });
+            router.push("/manage");
+        },
+        onError: (error: any) => {
+            toast.error(error?.message || "No se pudo finalizar la sesión");
+        },
+    });
+
+    const handleEndSession = () => {
+        if (!session || session.status !== "LIVE") {
+            router.push("/manage");
+            return;
+        }
+        endSessionMutation.mutate();
+    };
+
+    if (!session) return <div className="p-8 text-center text-gray-500 italic">Cargando sesión...</div>;
+
+    const sessionStatus = session.status ?? "SCHEDULED";
+    const isLive = sessionStatus === "LIVE";
+    const statusLabel = sessionStatus === "LIVE"
+        ? "Sesión en vivo"
+        : sessionStatus === "ENDED"
+            ? "Sesión finalizada"
+            : "Sesión programada";
 
     return (
         <div className="min-h-screen flex flex-col p-6 sm:p-8 bg-cream animate-fade-in">
             <div className="mb-7 pt-3 flex items-start justify-between">
                 <div>
                     <div className="flex items-center gap-2 mb-2">
-                        <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                        <span className="text-xs font-bold text-forest uppercase tracking-widest">Live Session</span>
+                        <span className={cn("w-2 h-2 rounded-full", isLive ? "bg-red-500 animate-pulse" : "bg-gray-300")}></span>
+                        <span className="text-xs font-bold text-forest uppercase tracking-widest">
+                            {statusLabel}
+                        </span>
                     </div>
                     <h1 className="font-serif text-3xl text-forest leading-tight font-bold">{session.title}</h1>
                     <p className="text-gray-400 text-sm mt-1">
@@ -66,14 +98,14 @@ export default function SessionLobbyPage() {
 
             <Card className="p-6 mb-7 flex items-center justify-between border-forest/10 overflow-hidden relative">
                 <div className="relative z-10">
-                    <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Total Attendance</p>
+                    <p className="text-gray-400 text-xs font-bold uppercase tracking-wider mb-1">Asistencia total</p>
                     <div className="flex items-baseline gap-2">
                         <span className="font-serif text-5xl text-forest font-bold">{stats.present + stats.late}</span>
-                        <span className="text-gray-400 font-medium">Recorded</span>
+                        <span className="text-gray-400 font-medium">Registrado</span>
                     </div>
                     <div className="mt-3 flex gap-2 text-xs">
-                        <span className="px-2 py-1 rounded-full bg-sage/10 text-sage font-bold">{stats.present} present</span>
-                        <span className="px-2 py-1 rounded-full bg-ochre/10 text-ochre font-bold">{stats.late} late</span>
+                        <span className="px-2 py-1 rounded-full bg-sage/10 text-sage font-bold">{stats.present} presentes</span>
+                        <span className="px-2 py-1 rounded-full bg-ochre/10 text-ochre font-bold">{stats.late} tarde</span>
                     </div>
                 </div>
                 <div className="w-16 h-16 bg-beige/30 rounded-full flex items-center justify-center text-forest relative z-10">
@@ -85,43 +117,58 @@ export default function SessionLobbyPage() {
             <div className="grid grid-cols-1 gap-4 mb-7">
                 <Button onClick={() => router.push(`/manage/sessions/${sessionId}/qr`)} className="h-20 shadow-float">
                     <QrCode size={26} />
-                    <span className="font-serif text-xl">Display QR Code</span>
+                    <span className="font-serif text-xl">Mostrar código QR</span>
                 </Button>
                 <Button variant="secondary" onClick={() => router.push(`/manage/sessions/${sessionId}/manual`)} className="h-16">
                     <ListCheck size={22} />
-                    <span>Manual Attendance</span>
+                    <span>Asistencia manual</span>
                 </Button>
             </div>
 
             <div className="flex-1 overflow-hidden flex flex-col">
-                <h3 className="text-charcoal font-serif text-lg mb-3 border-b border-gray-100 pb-2">Recent Scan Events</h3>
+                <h3 className="text-charcoal font-serif text-lg mb-3 border-b border-gray-100 pb-2">Escaneos recientes</h3>
                 <div className="space-y-3 overflow-y-auto no-scrollbar pb-20">
-                    {attendance?.filter(a => a.status !== 'ABSENT').sort((a, b) => (b.checkInAt || '').localeCompare(a.checkInAt || '')).map((a) => (
+                    {attendance?.filter(a => a.status !== 'ABSENT').sort((a, b) => (b.checkInAt || '').localeCompare(a.checkInAt || '')).map((a) => {
+                        const uiStatus = a.status === "PRESENT"
+                            ? ((a.minutesLate || 0) > 0 ? "LATE" : "ON_TIME")
+                            : a.status;
+                        const isLate = uiStatus === "LATE";
+                        const label = uiStatus === "ON_TIME" ? "A TIEMPO" : uiStatus;
+                        return (
                         <div key={a.id} className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100 shadow-sm animate-slide-up">
                             <div className="w-10 h-10 rounded-full bg-forest/5 flex items-center justify-center font-bold text-forest text-xs">
-                                {a.status === 'ON_TIME' ? 'OT' : 'LT'}
+                                {uiStatus === 'ON_TIME' ? 'OT' : uiStatus === 'LATE' ? 'LT' : 'EX'}
                             </div>
                             <div className="flex-1">
                                 <p className="text-sm font-medium text-charcoal">
-                                    Attendance recorded as <span className={cn("font-bold", a.status === 'ON_TIME' ? "text-sage" : "text-ochre")}>{a.status.replace('_', ' ')}</span>
+                                    Asistencia registrada como <span className={cn("font-bold", !isLate ? "text-sage" : "text-ochre")}>{label.replace('_', ' ')}</span>
                                 </p>
-                                <p className={cn("text-xs font-bold", a.status === 'ON_TIME' ? "text-sage" : "text-ochre")}>
-                                    {a.pointsAwarded ? `+${a.pointsAwarded} Points` : "— Points"}
+                                <p className={cn("text-xs font-bold", !isLate ? "text-sage" : "text-ochre")}>
+                                    {a.pointsAwarded ? `+${a.pointsAwarded} puntos` : "— puntos"}
                                 </p>
                             </div>
                             <span className="text-xs text-gray-400">
-                                {a.checkInAt ? new Date(a.checkInAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : "Just now"}
+                                {a.checkInAt ? new Date(a.checkInAt).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : "Recién"}
                             </span>
                         </div>
-                    ))}
+                    )})}
                     {(!attendance || attendance.filter(a => a.status !== 'ABSENT').length === 0) && (
-                        <p className="text-center py-10 text-gray-400 italic">No scans recorded yet.</p>
+                        <p className="text-center py-10 text-gray-400 italic">Aún no hay registros.</p>
                     )}
                 </div>
             </div>
 
-            <button onClick={() => router.push("/manage")} className="mt-auto w-full py-4 text-red-700 font-medium text-sm hover:underline hover:text-red-800 transition-colors pt-10">
-                End Current Session
+            <button
+                onClick={handleEndSession}
+                disabled={endSessionMutation.isPending}
+                className={cn(
+                    "mt-auto w-full py-4 font-medium text-sm transition-colors pt-10",
+                    isLive
+                        ? "text-red-700 hover:underline hover:text-red-800"
+                        : "text-gray-500 hover:text-gray-700"
+                )}
+            >
+                {isLive ? "Finalizar sesión" : "Volver a gestión"}
             </button>
         </div>
     );
