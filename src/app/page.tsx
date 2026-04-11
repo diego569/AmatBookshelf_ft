@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { Award, BookOpen, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -8,6 +9,37 @@ import {
     CardHeader,
     CardTitle,
 } from "@/components/ui/card"
+import { CLUB_DESCRIPTION, CLUB_NAME, getSiteUrl } from "@/lib/seo"
+
+const siteUrl = getSiteUrl()
+const heroImage = `${siteUrl}/images/landing/hero-session.jpg`
+
+export const metadata: Metadata = {
+    title: "Club de lectura juvenil en Puno, Perú",
+    description: CLUB_DESCRIPTION,
+    alternates: {
+        canonical: "/",
+    },
+    openGraph: {
+        title: CLUB_NAME,
+        description: CLUB_DESCRIPTION,
+        url: siteUrl,
+        images: [
+            {
+                url: heroImage,
+                width: 1200,
+                height: 900,
+                alt: "Sesión de lectura en comunidad - El Librero de Amat",
+            },
+        ],
+    },
+    twitter: {
+        card: "summary_large_image",
+        title: CLUB_NAME,
+        description: CLUB_DESCRIPTION,
+        images: [heroImage],
+    },
+}
 
 const experienceCards = [
     {
@@ -51,8 +83,41 @@ const galleryImages = [
 ]
 
 export default function Home() {
+    const jsonLd = {
+        "@context": "https://schema.org",
+        "@graph": [
+            {
+                "@type": "Organization",
+                "@id": `${siteUrl}/#organization`,
+                name: CLUB_NAME,
+                url: siteUrl,
+                description: CLUB_DESCRIPTION,
+                areaServed: "Puno, Perú",
+                address: {
+                    "@type": "PostalAddress",
+                    addressLocality: "Puno",
+                    addressCountry: "PE",
+                },
+            },
+            {
+                "@type": "WebSite",
+                "@id": `${siteUrl}/#website`,
+                url: siteUrl,
+                name: CLUB_NAME,
+                inLanguage: "es-PE",
+                publisher: {
+                    "@id": `${siteUrl}/#organization`,
+                },
+            },
+        ],
+    }
+
     return (
         <main className="min-h-screen bg-[#FDFBF7] text-[#2E4035]">
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
             <div className="mx-auto w-full max-w-6xl px-6 pb-16 pt-10 md:px-8 lg:pb-20 lg:pt-16">
                 <section className="grid items-center gap-10 lg:grid-cols-2 lg:gap-14">
                     <div className="space-y-6">
