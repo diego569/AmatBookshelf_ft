@@ -11,6 +11,9 @@ export const authApi = {
         return `${baseUrl}/auth/google`;
     },
 
+    devLogin: (email: string) =>
+        api.post<AuthTokens>("/auth/dev-login", { email }),
+
     refreshTokens: (refreshToken: string) =>
         api.post<AuthTokens>("/auth/refresh", { refreshToken }),
 

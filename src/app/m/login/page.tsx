@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -8,28 +8,41 @@ import { Input } from "@/components/ui/input";
 import { useAuthStore } from "@/lib/store/auth";
 import { authApi } from "@/lib/api/authApi";
 import { toast } from "sonner";
-import { Book, ChevronDown, ChevronUp } from "lucide-react";
+import { Book, ChevronDown, ChevronUp, ShieldCheck } from "lucide-react";
+import { resolveIntranetRoute } from "@/lib/auth/resolveIntranetRoute";
 
 export default function LoginPage() {
     const router = useRouter();
     const setTokens = useAuthStore((state) => state.setTokens);
     const [showDevLogin, setShowDevLogin] = useState(false);
-    const [devAccessToken, setDevAccessToken] = useState("");
-    const [devRefreshToken, setDevRefreshToken] = useState("");
+    const [devEmail, setDevEmail] = useState("diegoromani569@gmail.com");
+
+    useEffect(() => {
+        const error = new URLSearchParams(window.location.search).get("error");
+        if (error === "auth_failed") {
+            toast.error("No pudimos completar el acceso con Google. Prueba otra vez o usa el acceso local de desarrollo.");
+        }
+    }, []);
 
     const handleGoogleLogin = () => {
         window.location.href = authApi.getGoogleAuthUrl();
     };
 
-    const handleDevLogin = (e: React.FormEvent) => {
+    const handleDevLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!devAccessToken || !devRefreshToken) {
-            toast.error("Por favor ingresa ambos tokens");
+        if (!devEmail.trim()) {
+            toast.error("Ingresa un correo para el acceso local");
             return;
         }
-        setTokens(devAccessToken, devRefreshToken);
-        toast.success("Sesión iniciada con tokens de desarrollo");
-        router.push("/m");
+        try {
+            const tokens = await authApi.devLogin(devEmail.trim());
+            setTokens(tokens.accessToken, tokens.refreshToken);
+            toast.success("Sesion iniciada con la cuenta local");
+            const destination = await resolveIntranetRoute(tokens.accessToken);
+            router.push(destination);
+        } catch (error: any) {
+            toast.error(error?.message || "No se pudo iniciar sesion con ese correo");
+        }
     };
 
     return (
@@ -55,7 +68,7 @@ export default function LoginPage() {
 
                 <div className="space-y-2">
                     <p className="font-serif text-2xl italic text-charcoal">"Lee. Reflexiona. Pertenece."</p>
-                    <p className="font-sans text-xs text-gray-500 uppercase tracking-[0.22em]">Acceso de miembros</p>
+                    <p className="font-sans text-xs text-gray-500 uppercase tracking-[0.22em]">Acceso al intranet</p>
                 </div>
             </div>
 
@@ -86,26 +99,29 @@ export default function LoginPage() {
 
                         {showDevLogin && (
                             <Card className="p-6 space-y-4 animate-slide-up h-auto bg-white/50 backdrop-blur-sm">
-                                <div className="space-y-2 text-left">
-                                    <label className="text-[10px] uppercase font-bold text-gray-400 ml-1 tracking-wider">Token de acceso</label>
-                                    <Input
-                                        placeholder="eyJhbG..."
-                                        value={devAccessToken}
-                                        onChange={(e) => setDevAccessToken(e.target.value)}
-                                        className="text-xs font-mono"
-                                    />
+                                <div className="rounded-2xl bg-[#f7f2e8] p-4 text-left">
+                                    <div className="flex items-center gap-2 text-forest">
+                                        <ShieldCheck size={16} />
+                                        <p className="text-xs font-semibold uppercase tracking-[0.18em]">
+                                            Acceso local
+                                        </p>
+                                    </div>
+                                    <p className="mt-2 text-sm leading-relaxed text-charcoal/65">
+                                        Si Google falla en desarrollo, puedes entrar con una cuenta sembrada localmente.
+                                    </p>
                                 </div>
                                 <div className="space-y-2 text-left">
-                                    <label className="text-[10px] uppercase font-bold text-gray-400 ml-1 tracking-wider">Token de actualización</label>
+                                    <label className="text-[10px] uppercase font-bold text-gray-400 ml-1 tracking-wider">Correo de la cuenta local</label>
                                     <Input
-                                        placeholder="eyJhbG..."
-                                        value={devRefreshToken}
-                                        onChange={(e) => setDevRefreshToken(e.target.value)}
-                                        className="text-xs font-mono"
+                                        type="email"
+                                        placeholder="diegoromani569@gmail.com"
+                                        value={devEmail}
+                                        onChange={(e) => setDevEmail(e.target.value)}
+                                        className="text-sm"
                                     />
                                 </div>
                                 <Button onClick={handleDevLogin} className="w-full h-12 text-sm">
-                                    Ingresar como Dev
+                                    Ingresar con correo local
                                 </Button>
                             </Card>
                         )}

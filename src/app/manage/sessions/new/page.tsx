@@ -33,7 +33,8 @@ export default function SessionFormPage() {
         title: "",
         sessionType: "LECTURA",
         startsAt: "",
-        description: "",
+        summary: "",
+        isPointsEnabled: true,
     });
 
     // Helper to format date for datetime-local input (YYYY-MM-DDThh:mm)
@@ -47,10 +48,13 @@ export default function SessionFormPage() {
     useEffect(() => {
         if (existingSession) {
             setFormData({
-                title: existingSession.title,
+                title: existingSession.title || "",
                 sessionType: existingSession.sessionType,
                 startsAt: existingSession.startsAt ? toLocalISO(existingSession.startsAt) : "",
-                description: existingSession.description,
+                endsAt: existingSession.endsAt ? toLocalISO(existingSession.endsAt) : "",
+                summary: existingSession.summary || "",
+                sequenceNumber: existingSession.sequenceNumber || undefined,
+                isPointsEnabled: existingSession.isPointsEnabled ?? true,
             });
         }
     }, [existingSession]);
@@ -88,7 +92,10 @@ export default function SessionFormPage() {
         const data = {
             ...formData,
             startsAt: new Date(formData.startsAt!).toISOString(),
+            endsAt: formData.endsAt ? new Date(formData.endsAt).toISOString() : undefined,
             cycleId: context?.defaultCycleId,
+            isPointsEnabled:
+                formData.isPointsEnabled ?? formData.sessionType !== "COORDINACION",
         } as CreateSessionDto;
 
         if (isEdit) {
@@ -155,17 +162,63 @@ export default function SessionFormPage() {
                                 <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
                             </div>
                         </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-charcoal ml-1">Fecha y hora de fin</label>
+                            <div className="relative">
+                                <Input
+                                    type="datetime-local"
+                                    value={formData.endsAt || ""}
+                                    onChange={(e) => setFormData({ ...formData, endsAt: e.target.value })}
+                                    className="pl-12 bg-beige/30"
+                                />
+                                <Clock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            </div>
+                        </div>
                     </div>
 
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-charcoal ml-1">Notas (opcional)</label>
+                        <label className="text-sm font-medium text-charcoal ml-1">Resumen (opcional)</label>
                         <textarea
                             rows={3}
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            placeholder="Detalles del capítulo, ubicación..."
+                            value={formData.summary || ""}
+                            onChange={(e) => setFormData({ ...formData, summary: e.target.value })}
+                            placeholder="Detalles clave de la sesión, dinámica o recordatorios..."
                             className="w-full bg-beige/30 border border-transparent rounded-2xl px-4 py-3 text-sm focus:bg-white focus:border-forest transition resize-none outline-none"
                         />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-charcoal ml-1">Número de sesión</label>
+                            <Input
+                                type="number"
+                                min={1}
+                                value={formData.sequenceNumber ?? ""}
+                                onChange={(e) =>
+                                    setFormData({
+                                        ...formData,
+                                        sequenceNumber: e.target.value ? Number(e.target.value) : undefined,
+                                    })
+                                }
+                                className="bg-beige/30"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-charcoal ml-1">Puntos</label>
+                            <select
+                                value={String(formData.isPointsEnabled ?? true)}
+                                onChange={(e) =>
+                                    setFormData({
+                                        ...formData,
+                                        isPointsEnabled: e.target.value === "true",
+                                    })
+                                }
+                                className="w-full appearance-none bg-beige/30 border border-transparent rounded-2xl px-4 py-3 text-sm font-medium focus:bg-white focus:border-forest transition outline-none"
+                            >
+                                <option value="true">Esta sesión sí suma puntos</option>
+                                <option value="false">Esta sesión no suma puntos</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div className="pt-4 flex gap-3">

@@ -6,26 +6,28 @@ export type SessionStatus = "SCHEDULED" | "LIVE" | "ENDED";
 export interface Session {
     id: string;
     clubId: string;
-    cycleId: string;
-    title: string;
+    cycleId: string | null;
+    title?: string | null;
     sessionType: SessionType;
     status?: SessionStatus;
+    sequenceNumber?: number | null;
+    isPointsEnabled?: boolean;
     startsAt: string;
-    endsAt?: string;
+    endsAt?: string | null;
     startedAt?: string | null;
     endedAt?: string | null;
-    location?: string;
-    description?: string;
+    summary?: string | null;
 }
 
 export interface CreateSessionDto {
-    title: string;
+    title?: string;
     sessionType: SessionType;
     startsAt: string;
     endsAt?: string;
-    location?: string;
-    description?: string;
+    summary?: string;
     cycleId?: string;
+    isPointsEnabled?: boolean;
+    sequenceNumber?: number;
 }
 
 export const sessionsApi = {

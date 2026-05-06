@@ -1,185 +1,118 @@
 "use client";
 
+import Link from "next/link";
+import { useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useAuthStore } from "@/lib/store/auth";
+import { useRouter } from "next/navigation";
+import { ArrowRight, LibraryBig, Sparkles } from "lucide-react";
 import { appContextApi } from "@/lib/api/appContextApi";
-import { sessionsApi } from "@/lib/api/sessionsApi";
-import { pointsApi } from "@/lib/api/pointsApi";
-import { clubsApi } from "@/lib/api/clubsApi";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { History, Scan, BookOpen } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useEffect, useMemo } from "react";
+import { ReaderShell } from "@/components/member/reader-shell";
 
-export default function MemberDashboard() {
+export default function MemberEntryPage() {
     const router = useRouter();
-    const { currentPerson, membershipId, accessToken, setMembershipId } = useAuthStore();
 
-    // Redirect to login if no person data
-    useEffect(() => {
-        if (!useAuthStore.getState().accessToken) {
-            router.push("/m/login");
-        }
-    }, [router]);
-
-    // Fetch App Context
-    const { data: context } = useQuery({
+    const { data: context, isLoading } = useQuery({
         queryKey: ["appContext"],
         queryFn: appContextApi.getContext,
     });
 
-    const tokenPersonId = useMemo(() => {
-        if (!accessToken) return null;
-        try {
-            const base64Url = accessToken.split(".")[1];
-            if (!base64Url) return null;
-            const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
-            const json = decodeURIComponent(
-                atob(base64)
-                    .split("")
-                    .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
-                    .join("")
-            );
-            const payload = JSON.parse(json) as { sub?: string };
-            return payload.sub ?? null;
-        } catch {
-            return null;
-        }
-    }, [accessToken]);
-
-    const { data: memberships } = useQuery({
-        queryKey: ["memberships", context?.defaultClubId],
-        queryFn: () => clubsApi.getMemberships(context!.defaultClubId),
-        enabled: !!context?.defaultClubId,
-    });
-
-    const displayName = useMemo(() => {
-        if (memberships && tokenPersonId) {
-            const match = memberships.find((m) => m.personId === tokenPersonId);
-            if (match?.person?.fullName) return match.person.fullName;
-        }
-        return currentPerson?.name || "Member";
-    }, [memberships, tokenPersonId, currentPerson?.name]);
-
-    const resolvedMembershipId = useMemo(() => {
-        if (membershipId) return membershipId;
-        if (!memberships || !tokenPersonId) return null;
-        return memberships.find((m) => m.personId === tokenPersonId)?.id ?? null;
-    }, [membershipId, memberships, tokenPersonId]);
-
     useEffect(() => {
-        if (!membershipId && resolvedMembershipId) {
-            setMembershipId(resolvedMembershipId);
+        if (context?.activeCycleMembership?.cycleId) {
+            router.replace(`/m/cycles/${context.activeCycleMembership.cycleId}`);
         }
-    }, [membershipId, resolvedMembershipId, setMembershipId]);
+    }, [context?.activeCycleMembership?.cycleId, router]);
 
-    // Fetch Next Session
-    const { data: sessions } = useQuery({
-        queryKey: ["sessions", context?.defaultClubId],
-        queryFn: () =>
-            sessionsApi.getSessions(context!.defaultClubId, {
-                from: new Date().toISOString(),
-                to: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            }),
-        enabled: !!context?.defaultClubId,
-    });
+    const sortedCycles = useMemo(
+        () =>
+            [...(context?.memberCycles || [])].sort(
+                (a, b) => +new Date(b.cycle.startDate) - +new Date(a.cycle.startDate)
+            ),
+        [context?.memberCycles]
+    );
 
-    const nextSession = sessions?.[0];
-
-    // Fetch Points
-    const { data: points } = useQuery({
-        queryKey: ["points", membershipId, context?.defaultClubId],
-        queryFn: () =>
-            pointsApi.getPointsSummary(membershipId!, context!.defaultClubId, context?.defaultCycleId),
-        enabled: !!membershipId && !!context?.defaultClubId,
-    });
-
-    const handleScan = () => router.push("/m/scan");
-    const handleLedger = () => router.push("/m/ledger");
+    if (isLoading || context?.activeCycleMembership?.cycleId) {
+        return (
+            <div className="min-h-screen bg-[#f7f2e8] px-6 py-16 text-center text-charcoal/55">
+                Cargando tu experiencia lectora...
+            </div>
+        );
+    }
 
     return (
-        <div className="min-h-screen flex flex-col pb-24 animate-fade-in bg-cream">
-            <header className="px-6 sm:px-8 pt-10 pb-6 flex items-end justify-between">
-                <div>
-                    <p className="text-gray-500 text-sm font-medium mb-1">Bienvenida,</p>
-                    <h2 className="font-serif text-3xl text-forest">
-                        {displayName}
-                    </h2>
-                </div>
+        <ReaderShell
+            active="home"
+            cycleId={null}
+            clubName={context?.defaultClubName}
+            badge="Centro del lector"
+            title="Pasaporte"
+            subtitle="No tienes un ciclo activo ahora mismo, pero tu historia lectora sigue aqui y puedes volver a cualquiera de tus ciclos."
+        >
+            <section className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_320px]">
+                <div className="space-y-4">
+                    {sortedCycles.length ? (
+                        sortedCycles.map((item) => (
+                            <Card key={item.id} className="rounded-[2rem] border border-forest/8 bg-white/88 p-6">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div className="min-w-0">
+                                        <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-forest/8 text-forest">
+                                            <LibraryBig size={20} />
+                                        </div>
+                                        <h2 className="mt-4 font-serif text-4xl leading-tight text-charcoal">
+                                            {item.cycle.name}
+                                        </h2>
+                                        <p className="mt-2 text-sm leading-relaxed text-charcoal/60">
+                                            {item.cycle.theme || "Tu passport conserva sesiones, libros y conversaciones de este ciclo."}
+                                        </p>
+                                        <p className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-charcoal/42">
+                                            {new Date(item.cycle.startDate).toLocaleDateString("es-PE", {
+                                                month: "long",
+                                                day: "numeric",
+                                                year: "numeric",
+                                            })}
+                                        </p>
+                                    </div>
 
-                <button
-                    onClick={handleLedger}
-                    className="bg-white px-4 py-2 rounded-full shadow-sm border border-beige flex items-center gap-2 active:scale-95 transition"
-                    aria-label="Open points ledger"
-                >
-                    <span className="font-serif font-bold text-forest">
-                        {points?.totalPoints ?? "—"} pts
-                    </span>
-                    <History size={16} className="text-ochre" />
-                </button>
-            </header>
-
-            <main className="flex-1 px-6 sm:px-8 flex flex-col justify-center">
-                {nextSession ? (
-                    <Card className="p-7 sm:p-8 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-36 h-36 bg-beige/40 rounded-full -mr-12 -mt-12 blur-2xl"></div>
-                        <div className="relative z-10">
-                            <Badge className="mb-4">Próxima sesión</Badge>
-                            <h1 className="font-serif text-3xl sm:text-4xl text-forest leading-tight">
-                                {nextSession.title}
-                            </h1>
-                            <p className="text-gray-400 text-sm mt-2">
-                                {new Date(nextSession.startsAt).toLocaleDateString(undefined, {
-                                    weekday: "long",
-                                    month: "short",
-                                    day: "numeric",
-                                })}
-                                {" • "}
-                                {new Date(nextSession.startsAt).toLocaleTimeString(undefined, {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                })}
-                            </p>
-
-                            <div className="mt-6 flex items-center gap-3">
-                                <div className="w-8 h-8 rounded-full border-2 border-white bg-forest/5 flex items-center justify-center">
-                                    <BookOpen size={14} className="text-forest/40" />
+                                    <Button asChild className="rounded-full px-5">
+                                        <Link href={`/m/cycles/${item.cycleId}`}>
+                                            Abrir
+                                            <ArrowRight size={16} />
+                                        </Link>
+                                    </Button>
                                 </div>
-                                <span className="text-xs text-gray-400 font-medium">
-                                    {nextSession.sessionType.toLowerCase()} sesión
-                                </span>
-                            </div>
-                        </div>
-                    </Card>
-                ) : (
-                    <Card className="p-7 text-center">
-                        <p className="text-gray-400 italic">No hay sesiones próximas.</p>
-                    </Card>
-                )}
-
-                {!resolvedMembershipId && (
-                    <p className="text-center text-ochre text-xs mt-6 font-medium animate-pulse">
-                        Escanea tu primera sesión para unirte al club.
-                    </p>
-                )}
-
-                <p className="text-center text-gray-400 text-sm mt-8 px-6 leading-relaxed">
-                    “Los libros son una magia única y portátil.”<br />
-                    <span className="italic opacity-60">— Stephen King</span>
-                </p>
-            </main>
-
-            {/* Bottom primary action (mobile first) */}
-            <div className="fixed bottom-7 left-0 right-0 px-6 sm:px-8 z-30 flex justify-center">
-                <div className="w-full max-w-md">
-                    <Button onClick={handleScan} size="lg" className="w-full h-16 shadow-float">
-                        <Scan className="text-beige" />
-                        <span className="tracking-wide">Escanear QR de asistencia</span>
-                    </Button>
+                            </Card>
+                        ))
+                    ) : (
+                        <Card className="rounded-[2rem] border border-dashed border-forest/15 bg-white/78 p-8 text-center">
+                            <p className="font-serif text-3xl text-charcoal">Aun no tienes ciclos registrados</p>
+                            <p className="mt-3 text-sm leading-relaxed text-charcoal/60">
+                                Cuando te inscriban en un ciclo, este espacio se convertira en tu passport lector.
+                            </p>
+                        </Card>
+                    )}
                 </div>
-            </div>
-        </div>
+
+                <div className="space-y-5">
+                    <Card className="rounded-[2rem] border border-forest/8 bg-gradient-to-br from-white via-white to-[#f2ecdf] p-6">
+                        <div className="flex items-center gap-3">
+                            <Sparkles size={18} className="text-ochre" />
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-charcoal/45">
+                                Mientras tanto
+                            </p>
+                        </div>
+                        <p className="mt-4 font-serif text-3xl text-charcoal">
+                            Tu app ya puede lucir como un passport vivo.
+                        </p>
+                        <p className="mt-3 text-sm leading-relaxed text-charcoal/62">
+                            Aunque no haya un ciclo activo, desde aqui puedes volver a los anteriores y mantener la continuidad visual del area del lector.
+                        </p>
+                        <Button asChild variant="secondary" className="mt-5 w-full rounded-2xl">
+                            <Link href="/m/history">Explorar historial</Link>
+                        </Button>
+                    </Card>
+                </div>
+            </section>
+        </ReaderShell>
     );
 }

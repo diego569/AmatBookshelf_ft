@@ -27,7 +27,7 @@ async function handleResponse<T>(response: Response): Promise<T> {
         const message =
             (typeof data === "object" && data?.message) ||
             response.statusText ||
-            "An error occurred";
+            "Ocurrio un error";
         throw new ApiError(response.status, message, data);
     }
 
@@ -72,7 +72,7 @@ export async function apiFetch<T>(
                 response = await fetch(url, { ...options, headers });
             } else {
                 logout();
-                throw new ApiError(401, "Session expired. Please login again.");
+                throw new ApiError(401, "Tu sesion expiro. Inicia sesion otra vez.");
             }
         } catch (error) {
             logout();

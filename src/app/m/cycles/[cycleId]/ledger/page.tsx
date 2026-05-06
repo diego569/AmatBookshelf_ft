@@ -2,23 +2,35 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
+import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { History, Sparkles, Wallet } from "lucide-react";
 import { useAuthStore } from "@/lib/store/auth";
 import { appContextApi } from "@/lib/api/appContextApi";
 import { pointsApi } from "@/lib/api/pointsApi";
 import { clubsApi } from "@/lib/api/clubsApi";
+import { cyclesApi } from "@/lib/api/cyclesApi";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ReaderShell } from "@/components/member/reader-shell";
 import { cn } from "@/lib/utils";
+import { useManageReaderContext } from "@/lib/navigation/useManageReaderContext";
 
-export default function LedgerPage() {
+export default function CycleLedgerPage() {
     const { currentPerson, membershipId, accessToken } = useAuthStore();
+    const params = useParams<{ cycleId: string }>();
+    const cycleId = params.cycleId;
+    const { manageSuffix } = useManageReaderContext(cycleId);
 
     const { data: context } = useQuery({
         queryKey: ["appContext"],
         queryFn: appContextApi.getContext,
+    });
+
+    const { data: cycle } = useQuery({
+        queryKey: ["cycle", cycleId],
+        queryFn: () => cyclesApi.getCycle(cycleId),
+        enabled: !!cycleId,
     });
 
     const tokenPersonId = useMemo(() => {
@@ -51,38 +63,35 @@ export default function LedgerPage() {
             const match = memberships.find((member) => member.personId === tokenPersonId);
             if (match?.person?.fullName) return match.person.fullName;
         }
-        return currentPerson?.name || "Member";
+        return currentPerson?.name || "Miembro";
     }, [memberships, tokenPersonId, currentPerson?.name]);
 
     const { data: points, isLoading } = useQuery({
-        queryKey: ["points", membershipId, context?.defaultClubId, context?.defaultCycleId],
-        queryFn: () =>
-            pointsApi.getPointsSummary(
-                membershipId!,
-                context!.defaultClubId,
-                context?.defaultCycleId ?? undefined
-            ),
-        enabled: !!membershipId && !!context?.defaultClubId,
+        queryKey: ["points", membershipId, context?.defaultClubId, cycleId],
+        queryFn: () => pointsApi.getPointsSummary(membershipId!, context!.defaultClubId, cycleId),
+        enabled: !!membershipId && !!context?.defaultClubId && !!cycleId,
     });
 
+    const cycleName =
+        cycle?.name ||
+        context?.memberCycles?.find((item) => item.cycleId === cycleId)?.cycle.name ||
+        "Ciclo lector";
+
     const transactions = points?.transactions || [];
-    const cycleId = context?.activeCycleMembership?.cycleId || context?.defaultCycleId || undefined;
 
     return (
         <ReaderShell
             active="ledger"
             cycleId={cycleId}
-            cycleName={context?.activeCycleMembership?.cycle.name}
+            cycleName={cycleName}
             clubName={context?.defaultClubName}
-            badge="Registro de puntos"
+            badge={`Registro de ${cycleName}`}
             title="Puntos"
-            subtitle="Cada movimiento de puntos del ciclo, en una vista mas clara y util para el lector."
+            subtitle="Cada movimiento de puntos del ciclo abierto, en una vista clara y solo de lectura."
             headerAction={
-                cycleId ? (
-                    <Button asChild variant="secondary" size="sm" className="rounded-full px-4">
-                        <Link href={`/m/cycles/${cycleId}`}>Volver al passport</Link>
-                    </Button>
-                ) : null
+                <Button asChild variant="secondary" size="sm" className="rounded-full px-4">
+                    <Link href={`/m/cycles/${cycleId}${manageSuffix}`}>Volver al passport</Link>
+                </Button>
             }
         >
             <section className="grid gap-4 md:grid-cols-3">
@@ -98,14 +107,14 @@ export default function LedgerPage() {
                         Movimientos
                     </p>
                     <p className="mt-3 font-serif text-4xl text-charcoal">{transactions.length}</p>
-                    <p className="mt-2 text-sm text-charcoal/60">Entradas positivas o ajustes ya registrados.</p>
+                    <p className="mt-2 text-sm text-charcoal/60">Entradas y ajustes registrados en este ciclo.</p>
                 </Card>
                 <Card className="rounded-[2rem] border border-forest/8 bg-white/88 p-5">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-charcoal/45">
                         Persona
                     </p>
                     <p className="mt-3 font-serif text-2xl text-charcoal">{displayName}</p>
-                    <p className="mt-2 text-sm text-charcoal/60">Tu passport economico dentro del club.</p>
+                    <p className="mt-2 text-sm text-charcoal/60">Tu historial de puntos dentro de {cycleName}.</p>
                 </Card>
             </section>
 
@@ -156,7 +165,7 @@ export default function LedgerPage() {
                             ))
                         ) : (
                             <p className="rounded-[1.6rem] border border-dashed border-forest/15 bg-[#f7f2e8] px-4 py-6 text-center text-sm text-charcoal/60">
-                                Aun no hay movimientos registrados para este ciclo.
+                                Aún no hay movimientos registrados para este ciclo.
                             </p>
                         )}
                     </div>
@@ -171,7 +180,7 @@ export default function LedgerPage() {
                                 </p>
                                 <p className="mt-4 font-serif text-4xl">{points?.totalPoints || 0} pts</p>
                                 <p className="mt-2 text-sm leading-relaxed text-white/72">
-                                    Todo lo que ganaste o ajustaste durante el ciclo aparece aqui de forma ordenada.
+                                    Todo lo que ganaste o ajustaste durante {cycleName} aparece aquí de forma ordenada.
                                 </p>
                             </div>
                             <div className="rounded-2xl bg-white/10 p-3">
@@ -191,7 +200,7 @@ export default function LedgerPage() {
                             </div>
                         </div>
                         <p className="mt-3 text-sm leading-relaxed text-charcoal/60">
-                            Si alguna asistencia no se refleja como esperabas, este ledger te ayuda a detectar el motivo exacto y la fecha.
+                            Si una asistencia o ajuste no se refleja como esperabas, este ledger te muestra el motivo exacto y la fecha.
                         </p>
                     </Card>
                 </div>

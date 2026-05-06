@@ -139,14 +139,7 @@ export default function Home() {
                                 asChild
                                 className="h-12 rounded-2xl bg-[#2E4035] px-6 text-base font-semibold hover:bg-[#25362c]"
                             >
-                                <Link href="/m/login">Acceso de miembros</Link>
-                            </Button>
-                            <Button
-                                asChild
-                                variant="outline"
-                                className="h-12 rounded-2xl border-[#2E4035]/30 px-6 text-base font-semibold text-[#2E4035] hover:bg-[#2E4035]/5"
-                            >
-                                <Link href="/manage">Acceso de administración</Link>
+                                <Link href="/m/login">Acceso al intranet</Link>
                             </Button>
                         </div>
                     </div>

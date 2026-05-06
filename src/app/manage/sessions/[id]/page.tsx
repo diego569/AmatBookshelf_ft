@@ -4,17 +4,58 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { sessionsApi } from "@/lib/api/sessionsApi";
 import { attendanceApi } from "@/lib/api/attendanceApi";
+import { appContextApi } from "@/lib/api/appContextApi";
+import { clubsApi } from "@/lib/api/clubsApi";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { QrCode, ListCheck, Users, ChevronLeft } from "lucide-react";
+import { QrCode, ListCheck, Users, ChevronLeft, LibraryBig, Camera, MessageSquareMore } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useAuthStore } from "@/lib/store/auth";
+import { useMemo } from "react";
 
 export default function SessionLobbyPage() {
     const params = useParams();
     const router = useRouter();
     const queryClient = useQueryClient();
     const sessionId = params.id as string;
+    const { accessToken } = useAuthStore();
+
+    const tokenPersonId = useMemo(() => {
+        if (!accessToken) return null;
+        try {
+            const base64Url = accessToken.split(".")[1];
+            if (!base64Url) return null;
+            const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+            const json = decodeURIComponent(
+                atob(base64)
+                    .split("")
+                    .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+                    .join("")
+            );
+            const payload = JSON.parse(json) as { sub?: string };
+            return payload.sub ?? null;
+        } catch {
+            return null;
+        }
+    }, [accessToken]);
+
+    const { data: context } = useQuery({
+        queryKey: ["appContext"],
+        queryFn: appContextApi.getContext,
+    });
+
+    const { data: memberships } = useQuery({
+        queryKey: ["memberships", context?.defaultClubId],
+        queryFn: () => clubsApi.getMemberships(context!.defaultClubId),
+        enabled: !!context?.defaultClubId,
+    });
+
+    const isAdmin = useMemo(() => {
+        if (!memberships || !tokenPersonId) return false;
+        const membership = memberships.find((m) => m.personId === tokenPersonId);
+        return membership?.role === "admin";
+    }, [memberships, tokenPersonId]);
 
     const { data: session } = useQuery({
         queryKey: ["session", sessionId],
@@ -123,6 +164,18 @@ export default function SessionLobbyPage() {
                     <ListCheck size={22} />
                     <span>Asistencia manual</span>
                 </Button>
+                <Button variant="secondary" onClick={() => router.push(`/manage/sessions/${sessionId}/books`)} className="h-16">
+                    <LibraryBig size={22} />
+                    <span>Libros de la sesión</span>
+                </Button>
+                <Button variant="secondary" onClick={() => router.push(`/manage/sessions/${sessionId}/photos`)} className="h-16">
+                    <Camera size={22} />
+                    <span>Fotos de la sesión</span>
+                </Button>
+                <Button variant="secondary" onClick={() => router.push(`/manage/sessions/${sessionId}/discussion`)} className="h-16">
+                    <MessageSquareMore size={22} />
+                    <span>Preguntas de discusión</span>
+                </Button>
             </div>
 
             <div className="flex-1 overflow-hidden flex flex-col">
@@ -159,16 +212,16 @@ export default function SessionLobbyPage() {
             </div>
 
             <button
-                onClick={handleEndSession}
-                disabled={endSessionMutation.isPending}
+                onClick={isAdmin && isLive ? handleEndSession : () => router.push("/manage")}
+                disabled={isAdmin && endSessionMutation.isPending}
                 className={cn(
                     "mt-auto w-full py-4 font-medium text-sm transition-colors pt-10",
-                    isLive
+                    isAdmin && isLive
                         ? "text-red-700 hover:underline hover:text-red-800"
                         : "text-gray-500 hover:text-gray-700"
                 )}
             >
-                {isLive ? "Finalizar sesión" : "Volver a gestión"}
+                {isAdmin && isLive ? "Finalizar sesión" : "Volver a gestión"}
             </button>
         </div>
     );

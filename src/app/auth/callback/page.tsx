@@ -3,6 +3,7 @@
 import { useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/lib/store/auth";
+import { resolveIntranetRoute } from "@/lib/auth/resolveIntranetRoute";
 
 // Basic loader component to replace Lucide since it may not be in scope for this exact file
 // or use simple text for now.
@@ -21,14 +22,18 @@ function CallbackContent() {
         const accessToken = searchParams.get("accessToken");
         const refreshToken = searchParams.get("refreshToken");
 
-        if (accessToken && refreshToken) {
-            setTokens(accessToken, refreshToken);
-            // Redirect to dashboard
-            router.push("/m");
-        } else {
-            // Redirect to login with error
+        const resolveAndRedirect = async () => {
+            if (accessToken && refreshToken) {
+                setTokens(accessToken, refreshToken);
+                const destination = await resolveIntranetRoute(accessToken);
+                router.push(destination);
+                return;
+            }
+
             router.push("/m/login?error=auth_failed");
-        }
+        };
+
+        void resolveAndRedirect();
     }, [searchParams, setTokens, router]);
 
     return (

@@ -22,6 +22,8 @@
 npm-debug.log*
 yarn-debug.log*
 pnpm-debug.log*
+logs/
+playwright-artifacts/
 
 # local env files
 .env*.local

@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +8,7 @@ import { Confetti } from "@/components/confetti";
 import { Check, Clock, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export default function ScanResultPage() {
+function ScanResultContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
@@ -98,5 +99,21 @@ export default function ScanResultPage() {
                 </Card>
             </div>
         </div>
+    );
+}
+
+export default function ScanResultPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="fixed inset-0 z-50 bg-cream flex items-center justify-center p-6 sm:p-8">
+                    <Card className="w-full max-w-md p-8 text-center bg-white">
+                        <h2 className="font-serif text-3xl text-forest">Cargando resultado...</h2>
+                    </Card>
+                </div>
+            }
+        >
+            <ScanResultContent />
+        </Suspense>
     );
 }

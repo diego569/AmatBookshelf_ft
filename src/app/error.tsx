@@ -18,20 +18,20 @@ export default function ErrorBoundary({
     return (
         <div className="min-h-screen flex items-center justify-center p-6 bg-cream">
             <Card className="p-8 max-w-sm text-center">
-                <h2 className="text-2xl font-serif text-forest mb-2">Something went wrong</h2>
+                <h2 className="text-2xl font-serif text-forest mb-2">Algo salio mal</h2>
                 <p className="text-gray-500 mb-6 text-sm">
-                    We encountered an unexpected error. Please try again or return to the dashboard.
+                    Ocurrio un error inesperado. Intenta otra vez o vuelve al panel principal.
                 </p>
                 <div className="flex flex-col gap-3">
                     <Button onClick={() => reset()} className="w-full">
-                        Try again
+                        Reintentar
                     </Button>
                     <Button
                         variant="secondary"
                         onClick={() => (window.location.href = "/")}
                         className="w-full"
                     >
-                        Go Home
+                        Ir al inicio
                     </Button>
                 </div>
             </Card>
